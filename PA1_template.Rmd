@@ -1,25 +1,111 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+##  Loading and preprocessing the data
 
+we will load and process data.
 
-## Loading and preprocessing the data
+```{r Loading}
+data1<-read.csv('activity.csv',sep = ',')
+```
 
+##  What is mean total number of steps taken per day?
 
+- Calculate the total number of steps taken per day
 
-## What is mean total number of steps taken per day?
+```{r}
+sapply(split(data1$steps,data1$date),sum,na.rm=TRUE)
+```
 
+- Make a histogram of the total number of steps taken each day
+```{r}
+hist(sapply(split(data1$steps,data1$date),sum,na.rm=TRUE),xlab="number of steps",main = "Histogram of total steps per day")
+```
 
+- Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(sapply(split(data1$steps,data1$date),sum,na.rm=TRUE))
+median(sapply(split(data1$steps,data1$date),sum,na.rm=TRUE))
+```
 
-## What is the average daily activity pattern?
+##  What is the average daily activity pattern?
 
+- Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+data2<-sapply(split(data1$steps,as.factor(data1$interval)),mean,na.rm=TRUE)
+data3<-data.frame(interval=as.integer(names(data2)),averagestep=data2)
+plot(data3$interval,data3$averagestep,type="l",xlab='interval',ylab = 'average steps')
+```
 
+- Find the 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+data3[which(data3$averagestep==max(data3$averagestep)),1]
+```
+##  Imputing missing values
 
-## Imputing missing values
+- Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with 
+NAs)
+```{r}
+sum(is.na(data1$steps))
+```
 
+- Devise a strategy for filling in all of the missing values in the dataset. We use the mean for that 5-minute interval and we also create a new dataset that is equal to the original dataset but with the missing data filled in.
 
+```{r}
+data4<-data.frame(steps = rep(0,nrow(data1)),date=rep(0,nrow(data1)),interval = rep(0,nrow(data1)))
+for (i in seq(1,nrow(data1))){
+  if(is.na(data1$steps)[i]){
+    data4$steps[i]<-data3[which(data3$interval==data1$interval[i]),2]
+  }else{
+    data4$steps[i]<-data1$steps[i]
+  }
+}
+data4$interval<-data1$interval
+data4$date<-data1$date
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+- Make a histogram of the total number of steps taken each day
+```{r}
+hist(sapply(split(data4$steps,data4$date),sum,na.rm=TRUE),xlab="number of steps",main = "Histogram of total steps per day")
+```
+
+- Calculate and report the mean and median total number of steps taken per day. 
+```{r}
+mean(sapply(split(data4$steps,data4$date),sum,na.rm=TRUE))
+median(sapply(split(data4$steps,data4$date),sum,na.rm=TRUE))
+```
+
+- The impact of imputing missing data on the estimates of the total daily number of steps.
+```{r}
+data.frame(type=c('mean1','mean2','median1','median2'),number=c(mean(sapply(split(data1$steps,data1$date),sum,na.rm=TRUE)),mean(sapply(split(data4$steps,data4$date),sum,na.rm=TRUE)),median(sapply(split(data1$steps,data1$date),sum,na.rm=TRUE)),median(sapply(split(data4$steps,data4$date),sum,na.rm=TRUE))))
+```
+We can tell from above that the mean and median increase after imputing missing data.
+
+##  Are there differences in activity patterns between weekdays and weekends?
+
+- Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r}
+data4$type<-as.character(rep(0,nrow(data4)))
+daytime<-weekdays(as.Date(data4$date))
+for (i in seq(1,nrow(data4))){
+  daytime[i]<-ceiling(i/288)
+}
+daytime<-as.integer(daytime)
+for (i in seq(1,nrow(data4))){
+  if(daytime[i] %in% c(1,2,3,4,5)){
+    data4$type[i]<-'weekday'
+  }else{
+    data4$type[i]<-'weekend day'
+  }
+}
+```
+
+- Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+```{r}
+data5<-subset(data4,data4$type=='weekday')
+data6<-subset(data4,data4$type=='weekend day')
+data7<-sapply(split(data5$steps,as.factor(data5$interval)),mean,na.rm=TRUE)
+data8<-sapply(split(data6$steps,as.factor(data6$interval)),mean,na.rm=TRUE)
+data9<-data.frame(interval=as.integer(names(data7)),averagestep=data7)
+data10<-data.frame(interval=as.integer(names(data8)),averagestep=data8)
+par(mfrow=c(2,1),mar=c(4,4,1,1))
+plot(data9$interval,data9$averagestep,type="l",main='weekday',xlab='interval',ylab = 'Number of steps')
+plot(data10$interval,data10$averagestep,type="l",main='weekend day',xlab='interval',ylab = 'Number of steps')
+```
